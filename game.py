@@ -4,9 +4,26 @@ import random
 import time
 
 pygame.init()
+pygame.font.init()
 
-WIDTH, HEIGHT = 800, 600
-window = pygame.display.set_mode((WIDTH, HEIGHT))
+font = pygame.font.Font("pixelfont.ttf", 36)
+
+WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
+window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+
+# SPRITES
+
+playerImage = pygame.image.load("player.png")
+player = pygame.transform.scale(playerImage, (32, 32))
+
+enemyImage = pygame.image.load("enemy.png")
+enemy = pygame.transform.scale(enemyImage, (32, 32))
+
+fireballImage = pygame.image.load("fireball.png")
+fireball = pygame.transform.scale(fireballImage, (32, 32))
+
+
+
 
 def normalize(enemyX, enemyY):
     distance = math.sqrt((plrX - enemyX) ** 2 + (plrY - enemyY) ** 2)
@@ -30,18 +47,11 @@ def separation(enemy_index):
     for i, (other_enemyX, other_enemyY, _) in enumerate(enemies):
         if i != enemy_index:
             distance = math.sqrt((enemies[enemy_index][0] - other_enemyX) ** 2 + (enemies[enemy_index][1] - other_enemyY) ** 2)
-            if distance < 32:  # If too close
+            if distance < 32:
                 separation_force_x += (enemies[enemy_index][0] - other_enemyX) / distance
                 separation_force_y += (enemies[enemy_index][1] - other_enemyY) / distance
     return separation_force_x, separation_force_y
 
-# SPRITES
-
-playerImage = pygame.image.load("player.png")
-player = pygame.transform.scale(playerImage, (32, 32))
-
-enemyImage = pygame.image.load("enemy.png")
-enemy = pygame.transform.scale(enemyImage, (32, 32))
 
 clock = pygame.time.Clock()
 
@@ -57,15 +67,15 @@ def spawnEnemy():
     side = random.choice(['top', 'bottom', 'left', 'right'])
     if side == 'top':
         enemyX = random.randint(0, WIDTH)
-        enemyY = -100
+        enemyY = -50
     elif side == 'bottom':
         enemyX = random.randint(0, WIDTH)
-        enemyY = HEIGHT + 100
+        enemyY = HEIGHT + 50
     elif side == 'left':
-        enemyX = -100
+        enemyX = -50
         enemyY = random.randint(0, HEIGHT)
     elif side == 'right':
-        enemyX = WIDTH + 100
+        enemyX = WIDTH + 50
         enemyY = random.randint(0, HEIGHT)
 
     enemyIsFacingRight = enemyX < plrX
@@ -76,9 +86,15 @@ enemySpawnSpeed = 5
 
 difficulty = time.time()
 
+second = 0
+timePassed = time.time()
+
 running = True
 
 while running:
+    timeText = font.render(f"{second}", True, (0, 0, 0))
+    timeRect = timeText.get_rect(center=(WIDTH //2, 50))
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -130,7 +146,10 @@ while running:
     if time.time() - lastEnemySpawn > enemySpawnSpeed:
         spawnEnemy()
         lastEnemySpawn = time.time()
-    
+
+    if time.time() - timePassed >= 1:
+        second += 1
+        timePassed = time.time()
 
     for i in range(len(enemies)):
         enemyX, enemyY, enemyIsFacingRight = enemies[i]
@@ -155,5 +174,6 @@ while running:
             print("Diddy")
 
     window.blit(pygame.transform.flip(player, True, False) if not plrIsFacingRight else player, (plrX, plrY))
+    window.blit(timeText, timeRect)
     pygame.display.update()
     clock.tick(60)
