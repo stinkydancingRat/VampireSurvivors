@@ -24,6 +24,17 @@ def check_collision(enemy1, enemy2):
         enemy1[1] + 32 > enemy2[1]
     )
 
+def separation(enemy_index):
+    separation_force_x = 0
+    separation_force_y = 0
+    for i, (other_enemyX, other_enemyY, _) in enumerate(enemies):
+        if i != enemy_index:
+            distance = math.sqrt((enemies[enemy_index][0] - other_enemyX) ** 2 + (enemies[enemy_index][1] - other_enemyY) ** 2)
+            if distance < 32:  # If too close
+                separation_force_x += (enemies[enemy_index][0] - other_enemyX) / distance
+                separation_force_y += (enemies[enemy_index][1] - other_enemyY) / distance
+    return separation_force_x, separation_force_y
+
 # SPRITES
 
 playerImage = pygame.image.load("player.png")
@@ -124,26 +135,22 @@ while running:
     for i in range(len(enemies)):
         enemyX, enemyY, enemyIsFacingRight = enemies[i]
         dx, dy = normalize(enemyX, enemyY)
-        
-        # Move enemy
-        new_enemyX = enemyX + dx * enemySpeed
-        new_enemyY = enemyY + dy * enemySpeed
-        
-        # Check for collisions with other enemies
-        collision = False
-        for j in range(len(enemies)):
-            if i != j and check_collision([new_enemyX, new_enemyY, enemyIsFacingRight], enemies[j]):
-                collision = True
-                break
-        
-        if not collision:
-            enemyX = new_enemyX
-            enemyY = new_enemyY
+
+        sep_force_x, sep_force_y = separation(i)
+        dx += sep_force_x
+        dy += sep_force_y
+
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        if distance != 0:
+            dx /= distance
+            dy /= distance
+
+        enemyX += dx * enemySpeed
+        enemyY += dy * enemySpeed
         
         enemies[i] = [enemyX, enemyY, enemyIsFacingRight]
         window.blit(pygame.transform.flip(enemy, True, False) if not enemyIsFacingRight else enemy, (enemyX, enemyY))
-        
-        # Check for collision with player
+
         if plrX + 2 >= enemyX and plrX - 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
             print("Diddy")
 
