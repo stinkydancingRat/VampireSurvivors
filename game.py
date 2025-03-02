@@ -7,13 +7,15 @@ pygame.init()
 pygame.font.init()
 
 font = pygame.font.Font("pixelfont.ttf", 48)
+levelFont = pygame.font.Font("pixelfont.ttf", 24)
 
 WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
 window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
 # SPRITES
 
-levelUpCard = pygame.image.load("levelUpCard.png")
+levelUpCardImage = pygame.image.load("levelUpCard.png")
+levelUpCard = pygame.transform.scale(levelUpCardImage, (320, 640))
 
 xpOrbImage = pygame.image.load("xpOrb.png")
 xpOrb = pygame.transform.scale(xpOrbImage, (16, 16))
@@ -26,6 +28,7 @@ enemy = pygame.transform.scale(enemyImage, (32, 32))
 
 fireballImage = pygame.image.load("fireball.png")
 fireball = pygame.transform.scale(fireballImage, (48, 60))
+fireballIcon = pygame.transform.scale(fireballImage, (160, 200))
 
 def normalize(enemyX, enemyY):
     distance = math.sqrt((plrX - enemyX) ** 2 + (plrY - enemyY) ** 2)
@@ -150,9 +153,14 @@ fireballDX = 0
 fireballDY = 0
 fireballExists = False
 fireballAngle = 0
+fireballRegenTime = 12
+fireballRegen = 0
+fireballAmount = 3
 
 def spawnFireball(playerX, playerY, mouseX, mouseY):
-    global fireballX, fireballY, fireballDX, fireballDY, fireballExists, fireballAngle
+    global fireballX, fireballY, fireballDX, fireballDY, fireballExists, fireballAngle, fireballAmount
+
+    fireballAmount -= 1
 
     angle = math.atan2(mouseY - playerY, mouseX - playerX)
     fireballAngle = math.degrees(angle)
@@ -190,21 +198,47 @@ def draw_xp_bar(xp):
     pygame.draw.rect(window, (0, 255, 0), fill_rect)
     pygame.draw.rect(window, (0, 0, 0), outline_rect, 5)
 
-gameStopped = False
-onLevelUpScreen = False
+def fireballLevelUp():
+    levelText = font.render(f"LVL:{fireballLevel}→{fireballLevel + 1}", True, (255, 255, 255))
+    levelRect = levelText.get_rect(center=(WIDTH // 2 - 24, HEIGHT // 2))
+
+    infoText1 = levelFont.render("   Increase size and", True, (255, 255, 255))
+    infoText2 = levelFont.render("lower cooldown", True, (255, 255, 255))
+
+    infoRect1 = infoText1.get_rect(center=(WIDTH // 2 - 50, HEIGHT // 2 + 50))
+    infoRect2 = infoText2.get_rect(center=(WIDTH // 2 - 50, HEIGHT // 2 + 80))
+
+    window.blit(font.render("Level up!", True, (255, 255, 255)), (WIDTH // 2 - 150, 100))
+    window.blit(levelUpCard, (WIDTH // 2 - 180, HEIGHT // 2 - 320))
+    window.blit(infoText1, infoRect1)
+    window.blit(infoText2, infoRect2)
+    window.blit(levelText, levelRect)
+    window.blit(fireballIcon, (WIDTH // 2 - 100, HEIGHT // 2 - 260))
+
+
+onLevelUpScreen = True
+
+fireballLevel = 1
 
 while running:
+    mouseX, mouseY = pygame.mouse.get_pos()
     for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
     if xp >= 100:
         onLevelUpScreen = True
+
     if onLevelUpScreen == True:
-        window.blit(font.render("Level up!", True, (0, 0, 0)), (WIDTH // 2, HEIGHT // 2))
-        window.blit(levelUpCard, (WIDTH // 2 - 200, HEIGHT // 2 - 200))
-    if gameStopped == True:
-        window.fill((85, 170, 0))
-    elif gameStopped == False or onLevelUpScreen == False:
+        fireballLevelUp()
+        if pygame.mouse.get_pressed()[0]:
+            if mouseX >= WIDTH // 2 - 180 and mouseX <= WIDTH // 2 + 140 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                xp = 0
+                fireballLevel += 1
+                fireballRegenTime -= 1
+                onLevelUpScreen = False
+            
+
+    elif onLevelUpScreen == False:
         minutes = second // 60
         seconds = second % 60
         timeText = font.render(f"{minutes}:{seconds:02}", True, (0, 0, 0))
@@ -330,6 +364,12 @@ while running:
             lastHitTime = 0
         draw_xp_bar(xp)
         draw_health_bar(plrHealth, plrX, plrY + 40)
+
+        if fireballAmount <= 2:
+            if time.time() - fireballRegen > fireballRegenTime:
+                fireballAmount += 1
+                fireballRegen = time.time()
+
         if fireballExists:
             rotated_fireball = pygame.transform.rotate(fireball, -fireballAngle - 90)
             window.blit(rotated_fireball, (fireballX, fireballY))
