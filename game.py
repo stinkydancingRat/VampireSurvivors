@@ -20,7 +20,7 @@ enemyImage = pygame.image.load("enemy.png")
 enemy = pygame.transform.scale(enemyImage, (32, 32))
 
 fireballImage = pygame.image.load("fireball.png")
-fireball = pygame.transform.scale(fireballImage, (64, 80))
+fireball = pygame.transform.scale(fireballImage, (48, 60))
 
 
 
@@ -235,7 +235,7 @@ while running:
         
         enemies[i] = [enemyX, enemyY, enemyIsFacingRight]
         window.blit(pygame.transform.flip(enemy, True, False) if not enemyIsFacingRight else enemy, (enemyX, enemyY))
-        if fireballX + 64 >= enemyX and fireballX <= enemyX + 30 and fireballY + 80 >= enemyY and fireballY <= enemyY + 32:
+        if fireballX + 48 >= enemyX and fireballX <= enemyX + 30 and fireballY + 60 >= enemyY and fireballY <= enemyY + 32:
             enemies.pop(i)
         if plrX + 30 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
             if time.time() - lastHitTime > 1:
