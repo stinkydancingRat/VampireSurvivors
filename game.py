@@ -102,8 +102,13 @@ def spawnEnemy():
     enemyIsFacingRight = enemyX < plrX
     enemies.append([enemyX, enemyY, enemyIsFacingRight])
 
+def spawnInitialEnemies():
+    initial_enemy_count = random.randint(5, 10)
+    for _ in range(initial_enemy_count):
+        spawnEnemy()
+
 lastEnemySpawn = time.time()
-enemySpawnSpeed = 5
+enemySpawnSpeed = 1
 
 difficulty = time.time()
 
@@ -111,6 +116,8 @@ second = 0
 timePassed = time.time()
 
 running = True
+
+spawnInitialEnemies()
 
 fireballX = 0
 fireballY = 0
@@ -141,6 +148,7 @@ def draw_health_bar(health):
     fill_rect = pygame.Rect(WIDTH - bar_width - 20, 20, fill, bar_height)
     pygame.draw.rect(window, (255, 0, 0), fill_rect)
     pygame.draw.rect(window, (0, 0, 0), outline_rect, 2)
+
 
 while running:
     minutes = second // 60
@@ -187,15 +195,15 @@ while running:
     window.fill((85, 170, 0))
 
     if time.time() - difficulty > 20:
-        enemySpawnSpeed = 2
+        enemySpawnSpeed = 0.9
     elif time.time() - difficulty > 50:
-        enemySpawnSpeed = 1.5
+        enemySpawnSpeed = 0.8
     elif time.time() - difficulty > 100:
-        enemySpawnSpeed = 1.25
+        enemySpawnSpeed = 0.6
     elif time.time() - difficulty > 150:
-        enemySpawnSpeed = 1
-    elif time.time() - difficulty > 400:
         enemySpawnSpeed = 0.5
+    elif time.time() - difficulty > 400:
+        enemySpawnSpeed = 0.4
     elif time.time() - difficulty > 600:
         enemySpawnSpeed = 0.25
     elif time.time() - difficulty > 800:
@@ -209,7 +217,7 @@ while running:
         second += 1
         timePassed = time.time()
 
-    for i in range(len(enemies)):
+    for i in range(len(enemies) - 1, -1, -1):
         enemyX, enemyY, enemyIsFacingRight = enemies[i]
         dx, dy = normalize(enemyX, enemyY)
 
