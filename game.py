@@ -35,8 +35,8 @@ def normalize(enemyX, enemyY):
 
 def check_collision(enemy1, enemy2):
     return (
-        enemy1[0] < enemy2[0] + 32 and
-        enemy1[0] + 32 > enemy2[0] and
+        enemy1[0] < enemy2[0] + 30 and
+        enemy1[0] + 30 > enemy2[0] and
         enemy1[1] < enemy2[1] + 32 and
         enemy1[1] + 32 > enemy2[1]
     )
