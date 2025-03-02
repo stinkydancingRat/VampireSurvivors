@@ -20,7 +20,7 @@ enemyImage = pygame.image.load("enemy.png")
 enemy = pygame.transform.scale(enemyImage, (32, 32))
 
 fireballImage = pygame.image.load("fireball.png")
-fireball = pygame.transform.scale(fireballImage, (32, 32))
+fireball = pygame.transform.scale(fireballImage, (64, 80))
 
 
 
@@ -52,6 +52,25 @@ def separation(enemy_index):
                 separation_force_y += (enemies[enemy_index][1] - other_enemyY) / distance
     return separation_force_x, separation_force_y
 
+def knockback(enemy_index, dx, dy):
+    enemies[enemy_index][0] += dx * 10
+    enemies[enemy_index][1] += dy * 10
+
+knockback_velocity_x = 0
+knockback_velocity_y = 0
+
+def player_knockback(enemyX, enemyY):
+    global knockback_velocity_x, knockback_velocity_y
+    knockback_distance = 10
+    dx = plrX - enemyX
+    dy = plrY - enemyY
+    distance = math.sqrt(dx ** 2 + dy ** 2)
+    if distance != 0:
+        dx /= distance
+        dy /= distance
+    knockback_velocity_x = dx * knockback_distance
+    knockback_velocity_y = dy * knockback_distance
+
 
 clock = pygame.time.Clock()
 
@@ -62,6 +81,8 @@ plrSpeed = 3
 plrX = WIDTH // 2
 plrY = HEIGHT // 2
 plrIsFacingRight = True
+plrHealth = 100
+lastHitTime = 0
 
 def spawnEnemy():
     side = random.choice(['top', 'bottom', 'left', 'right'])
@@ -91,9 +112,42 @@ timePassed = time.time()
 
 running = True
 
+fireballX = 0
+fireballY = 0
+fireballDX = 0
+fireballDY = 0
+fireballExists = False
+fireballAngle = 0
+
+def spawnFireball(playerX, playerY, mouseX, mouseY):
+    global fireballX, fireballY, fireballDX, fireballDY, fireballExists, fireballAngle
+
+    angle = math.atan2(mouseY - playerY, mouseX - playerX)
+    fireballAngle = math.degrees(angle)
+    
+    fireballX = playerX - 32
+    fireballY = playerY - 32
+
+    fireballDX = math.cos(angle) * 15
+    fireballDY = math.sin(angle) * 15
+    
+    fireballExists = True
+
+def draw_health_bar(health):
+    bar_width = 200
+    bar_height = 20
+    fill = (health / 100) * bar_width
+    outline_rect = pygame.Rect(WIDTH - bar_width - 20, 20, bar_width, bar_height)
+    fill_rect = pygame.Rect(WIDTH - bar_width - 20, 20, fill, bar_height)
+    pygame.draw.rect(window, (255, 0, 0), fill_rect)
+    pygame.draw.rect(window, (0, 0, 0), outline_rect, 2)
+
 while running:
-    timeText = font.render(f"{second}", True, (0, 0, 0))
-    timeRect = timeText.get_rect(center=(WIDTH //2, 50))
+    minutes = second // 60
+    seconds = second % 60
+    timeText = font.render(f"{minutes}:{seconds:02}", True, (0, 0, 0))
+    timeRect = timeText.get_rect(center=(WIDTH // 2, 50))
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -120,6 +174,9 @@ while running:
         if not plrY + 32 >= HEIGHT:
             moveY = 1
 
+    if pygame.mouse.get_pressed()[0] and not fireballExists:
+        spawnFireball(plrX + 16, plrY + 16, *pygame.mouse.get_pos())
+
     if moveX != 0 and moveY != 0:
         moveX *= math.sqrt(0.5)
         moveY *= math.sqrt(0.5)
@@ -128,6 +185,7 @@ while running:
     plrY += moveY * plrSpeed
 
     window.fill((85, 170, 0))
+
     if time.time() - difficulty > 20:
         enemySpawnSpeed = 2
     elif time.time() - difficulty > 50:
@@ -169,10 +227,41 @@ while running:
         
         enemies[i] = [enemyX, enemyY, enemyIsFacingRight]
         window.blit(pygame.transform.flip(enemy, True, False) if not enemyIsFacingRight else enemy, (enemyX, enemyY))
+        if fireballX + 64 >= enemyX and fireballX <= enemyX + 30 and fireballY + 80 >= enemyY and fireballY <= enemyY + 32:
+            enemies.pop(i)
+        if plrX + 30 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
+            if time.time() - lastHitTime > 1:
+                plrHealth -= 10
+                player_knockback(enemyX, enemyY)
+                lastHitTime = time.time()
 
-        if plrX + 2 >= enemyX and plrX - 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
-            print("Diddy")
+    plrX += knockback_velocity_x
+    plrY += knockback_velocity_y
 
+    knockback_velocity_x *= 0.9
+    knockback_velocity_y *= 0.9
+
+    if plrX < 0:
+        plrX = 0
+    elif plrX + 30 > WIDTH:
+        plrX = WIDTH - 30
+
+    if plrY < 0:
+        plrY = 0
+    elif plrY + 32 > HEIGHT:
+        plrY = HEIGHT - 32
+
+    if time.time() - lastHitTime > 1:
+        lastHitTime = 0
+
+    draw_health_bar(plrHealth)
+    if fireballExists:
+        rotated_fireball = pygame.transform.rotate(fireball, -fireballAngle - 90)
+        window.blit(rotated_fireball, (fireballX, fireballY))
+        fireballX += fireballDX
+        fireballY += fireballDY
+        if fireballX < -80 or fireballX > WIDTH + 80 or fireballY < -80 or fireballY > HEIGHT + 80:
+            fireballExists = False
     window.blit(pygame.transform.flip(player, True, False) if not plrIsFacingRight else player, (plrX, plrY))
     window.blit(timeText, timeRect)
     pygame.display.update()
