@@ -194,31 +194,51 @@ def draw_xp_bar(xp):
     outline_rect = pygame.Rect(0, 0, bar_width, bar_height)
     fill_rect = pygame.Rect(0, 0, fill, bar_height)
     blank_rect = pygame.Rect(0, 0, bar_width, bar_height)
-    pygame.draw.rect(window, (0, 150, 0), blank_rect)
+    pygame.draw.rect(window, (0, 50, 0), blank_rect)
     pygame.draw.rect(window, (0, 255, 0), fill_rect)
     pygame.draw.rect(window, (0, 0, 0), outline_rect, 5)
 
-def fireballLevelUp():
+def fireballLevelUp(cardPos):
     levelText = font.render(f"LVL:{fireballLevel}→{fireballLevel + 1}", True, (255, 255, 255))
-    levelRect = levelText.get_rect(center=(WIDTH // 2 - 24, HEIGHT // 2))
-
+    levelRect = levelText.get_rect(center=(cardPos - 24 + 180, HEIGHT // 2))
+    
     infoText1 = levelFont.render("   Increase size and", True, (255, 255, 255))
     infoText2 = levelFont.render("lower cooldown", True, (255, 255, 255))
 
-    infoRect1 = infoText1.get_rect(center=(WIDTH // 2 - 50, HEIGHT // 2 + 50))
-    infoRect2 = infoText2.get_rect(center=(WIDTH // 2 - 50, HEIGHT // 2 + 80))
+    infoRect1 = infoText1.get_rect(center=(cardPos - 50 + 180, HEIGHT // 2 + 50))
+    infoRect2 = infoText2.get_rect(center=(cardPos - 50 + 180, HEIGHT // 2 + 80))
 
-    window.blit(font.render("Level up!", True, (255, 255, 255)), (WIDTH // 2 - 150, 100))
-    window.blit(levelUpCard, (WIDTH // 2 - 180, HEIGHT // 2 - 320))
+    
     window.blit(infoText1, infoRect1)
     window.blit(infoText2, infoRect2)
+    
+    window.blit(fireballIcon, (cardPos - 100 + 180, HEIGHT // 2 - 260))
     window.blit(levelText, levelRect)
-    window.blit(fireballIcon, (WIDTH // 2 - 100, HEIGHT // 2 - 260))
 
+card1Pos, card2Pos, card3Pos = WIDTH // 2 - 180, WIDTH // 4 - 180, WIDTH // 2 + 270
+
+cards = [card1Pos, card2Pos, card3Pos]
+
+def card1():
+    global card1Pos
+    window.blit(levelUpCard, (card1Pos, HEIGHT // 2 - 320))
+
+def card2():
+    global card2Pos
+    window.blit(levelUpCard, (card2Pos, HEIGHT // 2 - 320))
+
+def card3():
+    global card3Pos
+    window.blit(levelUpCard, (card3Pos, HEIGHT // 2 - 320))
 
 onLevelUpScreen = True
 
 fireballLevel = 1
+
+abilities = ["fireball"]
+
+randomCard = random.choice(cards)
+randomAbility = random.sample(abilities, 1)
 
 while running:
     mouseX, mouseY = pygame.mouse.get_pos()
@@ -229,7 +249,11 @@ while running:
         onLevelUpScreen = True
 
     if onLevelUpScreen == True:
-        fireballLevelUp()
+        card1()
+        card2()
+        card3()
+        if randomAbility[0] == "fireball":
+            fireballLevelUp(randomCard)
         if pygame.mouse.get_pressed()[0]:
             if mouseX >= WIDTH // 2 - 180 and mouseX <= WIDTH // 2 + 140 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
                 xp = 0
