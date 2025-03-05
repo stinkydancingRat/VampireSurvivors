@@ -7,7 +7,7 @@ pygame.init()
 pygame.font.init()
 
 #Original size is 16 by 20
-fireballSize = (48, 60)
+fireballSize = (32, 40)
 
 font = pygame.font.Font("pixelfont.ttf", 48)
 levelFont = pygame.font.Font("pixelfont.ttf", 24)
@@ -16,6 +16,11 @@ WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
 window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
 # SPRITES
+swordSwingImage = pygame.image.load("sprites/swordSwing.png")
+swordSwing = pygame.transform.scale(swordSwingImage, (90, 96))
+
+swordImage = pygame.image.load("sprites/sword.png")
+sword = pygame.transform.scale(swordImage, (20, 32))
 
 levelUpCardImage = pygame.image.load("sprites/levelUpCard.png")
 levelUpCard = pygame.transform.scale(levelUpCardImage, (320, 640))
@@ -30,9 +35,33 @@ enemyImage = pygame.image.load("sprites/enemy.png")
 enemy = pygame.transform.scale(enemyImage, (32, 32))
 
 fireballImage = pygame.image.load("sprites/fireball.png")
-fireball = pygame.transform.scale(fireballImage, fireballSize)
 fireballIcon = pygame.transform.scale(fireballImage, (160, 200))
 
+swingingTime = 0.2
+swingTime = time.time()
+swinging = False
+swordCooldown = time.time()
+swordCooldownTime = 1.5
+canSwing = True
+
+class Sword():
+    def __init__(self, plrX, plrY, isFacingRight, swinging):
+        self.x = plrX
+        self.y = plrY
+        self.isFacingRight = isFacingRight
+        self.swinging = swinging
+    def swing(self):
+        self.swinging = True
+        if self.isFacingRight:
+            window.blit(swordSwing, (self.x, self.y - 32))
+        else:
+            window.blit(pygame.transform.flip(swordSwing,True, False), (self.x -54, self.y -32))
+    def idle(self):
+        self.swinging = False
+        if self.isFacingRight:
+            window.blit(sword, (self.x + 24, self.y + 5))
+        else:
+            window.blit(sword, (self.x -8, self.y + 5))
 
 def normalize(enemyX, enemyY):
     distance = math.sqrt((plrX - enemyX) ** 2 + (plrY - enemyY) ** 2)
@@ -55,7 +84,7 @@ def check_collision(enemy1, enemy2):
 def separation(enemy_index):
     separation_force_x = 0
     separation_force_y = 0
-    for i, (other_enemyX, other_enemyY, _) in enumerate(enemies):
+    for i, (other_enemyX, other_enemyY, _, _) in enumerate(enemies):
         if i != enemy_index:
             distance = math.sqrt(
                 (enemies[enemy_index][0] - other_enemyX) ** 2 + (enemies[enemy_index][1] - other_enemyY) ** 2)
@@ -89,7 +118,8 @@ def player_knockback(enemyX, enemyY):
 
 clock = pygame.time.Clock()
 
-enemySpeed = 1.8
+enemySpeed = 1
+enemyHealth = 10
 enemies = []
 
 plrSpeed = 3
@@ -101,11 +131,9 @@ lastHitTime = 0
 
 
 def spawnEnemy():
-    side = random.choice(['top', 'bottom', 'left', 'right'])
-    if side == 'top':
-        enemyX = random.randint(0, WIDTH)
-        enemyY = -50
-    elif side == 'bottom':
+    side = random.choice(['bottom', 'left', 'right'])
+
+    if side == 'bottom':
         enemyX = random.randint(0, WIDTH)
         enemyY = HEIGHT + 50
     elif side == 'left':
@@ -116,7 +144,7 @@ def spawnEnemy():
         enemyY = random.randint(0, HEIGHT)
 
     enemyIsFacingRight = enemyX < plrX
-    enemies.append([enemyX, enemyY, enemyIsFacingRight])
+    enemies.append([enemyX, enemyY, enemyIsFacingRight, enemyHealth])
 
 
 def spawnInitialEnemies():
@@ -151,7 +179,7 @@ def xpDistance(xpX, xpY):
 
 
 lastEnemySpawn = time.time()
-enemySpawnSpeed = 1
+enemySpawnSpeed = 0.5
 
 difficulty = time.time()
 
@@ -169,9 +197,9 @@ fireballDY = 0
 fireballExists = False
 fireballAngle = 0
 fireballRegenTime = 12
-fireballRegen = 0
+fireballRegen = time.time()
 fireballAmount = 3
-
+fireballMaxAmount = 3
 
 def spawnFireball(playerX, playerY, mouseX, mouseY):
     global fireballX, fireballY, fireballDX, fireballDY, fireballExists, fireballAngle, fireballAmount
@@ -181,8 +209,8 @@ def spawnFireball(playerX, playerY, mouseX, mouseY):
     angle = math.atan2(mouseY - playerY, mouseX - playerX)
     fireballAngle = math.degrees(angle)
 
-    fireballX = playerX - 32
-    fireballY = playerY - 32
+    fireballX = playerX - fireballSize[0]
+    fireballY = playerY - fireballSize[1]
 
     fireballDX = math.cos(angle) * 15
     fireballDY = math.sin(angle) * 15
@@ -217,7 +245,7 @@ def draw_xp_bar(xp):
     pygame.draw.rect(window, (0, 255, 0), fill_rect)
     pygame.draw.rect(window, (0, 0, 0), outline_rect, 5)
 
-fireballLevel = 1
+fireballLevel = 0
 
 abilities = ["fireball", " "]
 card1Ability = None
@@ -225,9 +253,12 @@ card2Ability = None
 card3Ability = None
 
 card1Pos, card2Pos, card3Pos = WIDTH // 2 - 180, WIDTH // 4 - 180, WIDTH // 2 + 270
-
+inventory = ["sword"]
+currentWeapon = "sword"
 
 def fireballLevelUp(cardPos):
+    if "fireball" not in inventory:
+        inventory.append("fireball")
     levelText = font.render(f"LVL:{fireballLevel}→{fireballLevel + 1}", True, (255, 255, 255))
     levelRect = levelText.get_rect(center=(cardPos - 24 + 180, HEIGHT // 2))
 
@@ -294,30 +325,34 @@ def reset_level_up_abilities():
 
 def levelUpAbilityCheck(selected_card):
     global fireballLevel, fireballRegenTime, fireballSize, xp
-    if selected_card == card1Pos and card1Ability == "fireball":
+    if selected_card == card1Pos and card1Ability == "fireball" or selected_card == card2Pos and card2Ability == "fireball" or selected_card == card3Pos and card3Ability == "fireball":
         fireballLevel += 1
         fireballRegenTime -= 1
-        fireballSize = (fireballSize[0] + 16, fireballSize[1] + 20)
-    elif selected_card == card2Pos and card2Ability == "fireball":
-        fireballLevel += 1
-        fireballRegenTime -= 1
-        fireballSize = (fireballSize[0] + 16, fireballSize[1] + 20)
-    elif selected_card == card3Pos and card3Ability == "fireball":
-        fireballLevel += 1
-        fireballRegenTime -= 1
-        fireballSize = (fireballSize[0] + 16, fireballSize[1] + 20)
+        fireballSize = (fireballSize[0] + 8, fireballSize[1] + 10)
+attacking = False
+def attack():
+    global attacking, swinging, fireballAmount, currentWeapon, canSwing
+    if fireballAmount > 0 and currentWeapon == "fireball":
+        spawnFireball(plrX, plrY, *pygame.mouse.get_pos())
+    if currentWeapon == "sword" and not swinging and canSwing:
+        swinging = True
+        canSwing = False
+    attacking = False
 
 
-onLevelUpScreen: bool = True
-
-
+onLevelUpScreen: bool = False
 
 
 while running:
+    fireball = pygame.transform.scale(fireballImage, fireballSize)
     mouseX, mouseY = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.MOUSEBUTTONDOWN and onLevelUpScreen == False:
+            if event.button == 1:
+                attacking = True
+
     if xp >= 100:
         randomAbility = random.sample(abilities, 1)
         onLevelUpScreen = True
@@ -327,24 +362,34 @@ while running:
         card2()
         card3()
 
-        if pygame.mouse.get_pressed()[0]:
-            if mouseX >= card1Pos and mouseX <= card1Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
-                xp = 0
-                levelUpAbilityCheck()
-                time.sleep(0.5)
-                onLevelUpScreen = False
-            if mouseX >= card2Pos and mouseX <= card2Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
-                xp = 0
-                levelUpAbilityCheck()
-                time.sleep(0.5)
-                onLevelUpScreen = False
-            if mouseX >= card3Pos and mouseX <= card3Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
-                xp = 0
-                levelUpAbilityCheck()
-                time.sleep(0.5)
-                onLevelUpScreen = False
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+
+                    if mouseX >= card1Pos and mouseX <= card1Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                        xp = 0
+                        levelUpAbilityCheck(card1Pos)
+                        time.sleep(0.5)
+                        onLevelUpScreen = False
+                        plrHealth += 10
+
+                    if mouseX >= card2Pos and mouseX <= card2Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                        xp = 0
+                        levelUpAbilityCheck(card2Pos)
+                        time.sleep(0.5)
+                        onLevelUpScreen = False
+                        plrHealth += 10
+
+                    if mouseX >= card3Pos and mouseX <= card3Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                        xp = 0
+                        levelUpAbilityCheck(card3Pos)
+                        time.sleep(0.5)
+                        onLevelUpScreen = False
+                        plrHealth += 10
 
     elif onLevelUpScreen == False:
+        if plrHealth >= 100:
+            plrHealth = 100
         minutes = second // 60
         seconds = second % 60
         timeText = font.render(f"{minutes}:{seconds:02}", True, (0, 0, 0))
@@ -371,8 +416,12 @@ while running:
             if not plrY + 32 >= HEIGHT:
                 moveY = 1
 
-        if pygame.mouse.get_pressed()[0] and not fireballExists:
-            spawnFireball(plrX + 16, plrY + 16, *pygame.mouse.get_pos())
+        if keys[pygame.K_1]:
+            currentWeapon = "sword"
+
+        if keys[pygame.K_2] and len(inventory) >= 2:
+            currentWeapon = inventory[1]
+
 
         if moveX != 0 and moveY != 0:
             moveX *= math.sqrt(0.5)
@@ -384,29 +433,30 @@ while running:
         window.fill((85, 170, 0))
 
         if time.time() - difficulty > 20:
-            enemySpawnSpeed = 0.9
-        elif time.time() - difficulty > 50:
-            enemySpawnSpeed = 0.8
-        elif time.time() - difficulty > 100:
-            enemySpawnSpeed = 0.6
-        elif time.time() - difficulty > 150:
-            enemySpawnSpeed = 0.5
-        elif time.time() - difficulty > 400:
             enemySpawnSpeed = 0.4
+        elif time.time() - difficulty > 50:
+            enemySpawnSpeed = 0.3
+        elif time.time() - difficulty > 100:
+            enemySpawnSpeed = 0.2
+        elif time.time() - difficulty > 150:
+            enemySpawnSpeed = 0.17
+        elif time.time() - difficulty > 400:
+            enemySpawnSpeed = 0.15
         elif time.time() - difficulty > 600:
-            enemySpawnSpeed = 0.25
-        elif time.time() - difficulty > 800:
             enemySpawnSpeed = 0.1
+        elif time.time() - difficulty > 800:
+            enemySpawnSpeed = 0.05
 
         if time.time() - lastEnemySpawn > enemySpawnSpeed:
             spawnEnemy()
             lastEnemySpawn = time.time()
+
         if time.time() - timePassed >= 1:
             second += 1
             timePassed = time.time()
 
         for i in range(len(enemies) - 1, -1, -1):
-            enemyX, enemyY, enemyIsFacingRight = enemies[i]
+            enemyX, enemyY, enemyIsFacingRight, enemyHealth = enemies[i]
             dx, dy = normalize(enemyX, enemyY)
 
             sep_force_x, sep_force_y = separation(i)
@@ -421,10 +471,13 @@ while running:
             enemyX += dx * enemySpeed
             enemyY += dy * enemySpeed
 
-            enemies[i] = [enemyX, enemyY, enemyIsFacingRight]
+            enemies[i] = [enemyX, enemyY, enemyIsFacingRight, enemyHealth]
             window.blit(pygame.transform.flip(enemy, True, False) if not enemyIsFacingRight else enemy,
                         (enemyX, enemyY))
-            if fireballX + 48 >= enemyX and fireballX <= enemyX + 30 and fireballY + 60 >= enemyY and fireballY <= enemyY + 32:
+            if fireballX + fireballSize[0] >= enemyX and fireballX <= enemyX + 30 and fireballY + fireballSize[1] >= enemyY and fireballY <= enemyY + 32:
+                enemies.pop(i)
+                spawnXP(enemyX, enemyY)
+            if swinging and ((plrIsFacingRight and plrX + 90 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32) or (plrX >= enemyX and plrX -52 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32)):
                 enemies.pop(i)
                 spawnXP(enemyX, enemyY)
             if plrX + 30 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
@@ -439,15 +492,15 @@ while running:
 
             if distance < 120:
                 if distance > 1:
-                    xpOrbDX = (plrX - xpX) / distance * 2
-                    xpOrbDY = (plrY - xpY) / distance * 2
+                    xpOrbDX = (plrX - xpX) / distance * 3.5
+                    xpOrbDY = (plrY - xpY) / distance * 3.5
                     xpX += xpOrbDX
                     xpY += xpOrbDY
 
             window.blit(xpOrb, (xpX, xpY))
 
             if plrX + 30 >= xpX and plrX + 2 <= xpX + 16 and plrY + 32 >= xpY and plrY <= xpY + 16:
-                xp += 10
+                xp += 2.5
                 xpOrbs.pop(i)
             else:
                 xpOrbs[i] = [xpX, xpY]
@@ -473,7 +526,7 @@ while running:
         draw_health_bar(plrHealth, plrX, plrY + 40)
 
         if fireballAmount <= 2:
-            if time.time() - fireballRegen > fireballRegenTime:
+            if time.time() - fireballRegenTime > fireballRegen:
                 fireballAmount += 1
                 fireballRegen = time.time()
 
@@ -484,7 +537,24 @@ while running:
             fireballY += fireballDY
             if fireballX < -80 or fireballX > WIDTH + 80 or fireballY < -80 or fireballY > HEIGHT + 80:
                 fireballExists = False
+
         window.blit(pygame.transform.flip(player, True, False) if not plrIsFacingRight else player, (plrX, plrY))
+
+        if time.time() - swingTime > swingingTime:
+            swinging = False
+            swingTime = time.time()
+        if currentWeapon == "sword":
+            Sword(plrX, plrY, plrIsFacingRight, swinging).idle()
+        if time.time() - swordCooldown > swordCooldownTime:
+            canSwing = True
+            swordCooldown = time.time()
+
+        if attacking:
+            attack()
+
+        if swinging:
+            Sword(plrX, plrY, plrIsFacingRight, swinging).swing()
+
         window.blit(timeText, timeRect)
     pygame.display.update()
     clock.tick(60)
