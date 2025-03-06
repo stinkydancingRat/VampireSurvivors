@@ -44,24 +44,28 @@ swordCooldown = time.time()
 swordCooldownTime = 1.5
 canSwing = True
 
-class Sword():
-    def __init__(self, plrX, plrY, isFacingRight, swinging):
+
+class Sword:
+    def __init__(self, plrX, plrY, is_facing_right, swinging):
         self.x = plrX
         self.y = plrY
-        self.isFacingRight = isFacingRight
+        self.is_facing_right = is_facing_right
         self.swinging = swinging
+
     def swing(self):
         self.swinging = True
-        if self.isFacingRight:
+        if self.is_facing_right:
             window.blit(swordSwing, (self.x, self.y - 32))
         else:
-            window.blit(pygame.transform.flip(swordSwing,True, False), (self.x -54, self.y -32))
+            window.blit(pygame.transform.flip(swordSwing, True, False), (self.x - 54, self.y - 32))
+
     def idle(self):
         self.swinging = False
-        if self.isFacingRight:
+        if self.is_facing_right:
             window.blit(sword, (self.x + 24, self.y + 5))
         else:
-            window.blit(sword, (self.x -8, self.y + 5))
+            window.blit(sword, (self.x - 8, self.y + 5))
+
 
 def normalize(enemyX, enemyY):
     distance = math.sqrt((plrX - enemyX) ** 2 + (plrY - enemyY) ** 2)
@@ -86,8 +90,7 @@ def separation(enemy_index):
     separation_force_y = 0
     for i, (other_enemyX, other_enemyY, _, _) in enumerate(enemies):
         if i != enemy_index:
-            distance = math.sqrt(
-                (enemies[enemy_index][0] - other_enemyX) ** 2 + (enemies[enemy_index][1] - other_enemyY) ** 2)
+            distance = math.sqrt((enemies[enemy_index][0] - other_enemyX) ** 2 + (enemies[enemy_index][1] - other_enemyY) ** 2)
             if distance < 32:
                 separation_force_x += (enemies[enemy_index][0] - other_enemyX) / distance
                 separation_force_y += (enemies[enemy_index][1] - other_enemyY) / distance
@@ -130,7 +133,7 @@ plrHealth = 100
 lastHitTime = 0
 
 
-def spawnEnemy():
+def spawn_enemy():
     side = random.choice(['bottom', 'left', 'right'])
 
     if side == 'bottom':
@@ -147,10 +150,10 @@ def spawnEnemy():
     enemies.append([enemyX, enemyY, enemyIsFacingRight, enemyHealth])
 
 
-def spawnInitialEnemies():
+def spawn_first_enemies():
     initial_enemy_count = random.randint(5, 10)
     for _ in range(initial_enemy_count):
-        spawnEnemy()
+        spawn_enemy()
 
 
 xp = 0
@@ -161,7 +164,7 @@ xpOrbDY = 0
 xpOrbs = []
 
 
-def spawnXP(enemyX, enemY):
+def spawn_xp(enemyX, enemY):
     global xpOrbX, xpOrbY
     xpOrbX = enemyX
     xpOrbY = enemY
@@ -169,7 +172,7 @@ def spawnXP(enemyX, enemY):
     xpOrbs.append([xpOrbX, xpOrbY])
 
 
-def xpDistance(xpX, xpY):
+def xp_distance(xpX, xpY):
     distance = math.sqrt((plrX - xpX) ** 2 + (plrY - xpY) ** 2)
     if distance == 0:
         return 0, 0
@@ -188,7 +191,7 @@ timePassed = time.time()
 
 running = True
 
-spawnInitialEnemies()
+spawn_first_enemies()
 
 fireballX = 0
 fireballY = 0
@@ -201,7 +204,8 @@ fireballRegen = time.time()
 fireballAmount = 3
 fireballMaxAmount = 3
 
-def spawnFireball(playerX, playerY, mouseX, mouseY):
+
+def spawn_fireball(playerX, playerY, mouseX, mouseY):
     global fireballX, fireballY, fireballDX, fireballDY, fireballExists, fireballAngle, fireballAmount
 
     fireballAmount -= 1
@@ -245,103 +249,108 @@ def draw_xp_bar(xp):
     pygame.draw.rect(window, (0, 255, 0), fill_rect)
     pygame.draw.rect(window, (0, 0, 0), outline_rect, 5)
 
+
 fireballLevel = 0
 
 abilities = ["fireball", " "]
-card1Ability = None
-card2Ability = None
-card3Ability = None
+card1_ability = None
+card2_ability = None
+card3_ability = None
 
-card1Pos, card2Pos, card3Pos = WIDTH // 2 - 180, WIDTH // 4 - 180, WIDTH // 2 + 270
+card1_pos, card2_pos, card3_pos = WIDTH // 2 - 180, WIDTH // 4 - 180, WIDTH // 2 + 270
 inventory = ["sword"]
 currentWeapon = "sword"
 
-def fireballLevelUp(cardPos):
+
+def fireball_level_up(card_pos: int) -> None:
     if "fireball" not in inventory:
         inventory.append("fireball")
     levelText = font.render(f"LVL:{fireballLevel}→{fireballLevel + 1}", True, (255, 255, 255))
-    levelRect = levelText.get_rect(center=(cardPos - 24 + 180, HEIGHT // 2))
+    levelRect = levelText.get_rect(center=(card_pos - 24 + 180, HEIGHT // 2))
 
     infoText1 = levelFont.render("   Increase size and", True, (255, 255, 255))
     infoText2 = levelFont.render("lower cooldown", True, (255, 255, 255))
 
-    infoRect1 = infoText1.get_rect(center=(cardPos - 50 + 180, HEIGHT // 2 + 50))
-    infoRect2 = infoText2.get_rect(center=(cardPos - 50 + 180, HEIGHT // 2 + 80))
+    infoRect1 = infoText1.get_rect(center=(card_pos - 50 + 180, HEIGHT // 2 + 50))
+    infoRect2 = infoText2.get_rect(center=(card_pos - 50 + 180, HEIGHT // 2 + 80))
 
     window.blit(infoText1, infoRect1)
     window.blit(infoText2, infoRect2)
 
-    window.blit(fireballIcon, (cardPos - 100 + 180, HEIGHT // 2 - 260))
+    window.blit(fireballIcon, (card_pos - 100 + 180, HEIGHT // 2 - 260))
     window.blit(levelText, levelRect)
 
 
-def checkAbility(cardPos, ability):
+def check_ability(card_pos: int, ability: str):
     if ability == "fireball":
-        fireballLevelUp(cardPos)
+        fireball_level_up(card_pos)
 
 
 def card1():
-    global card1Ability
-    if card1Ability is None:
-        available_abilities = [a for a in abilities if a not in [card2Ability, card3Ability]]
+    global card1_ability
+    if card1_ability is None:
+        available_abilities = [a for a in abilities if a not in [card2_ability, card3_ability]]
         if available_abilities:
-            card1Ability = random.choice(available_abilities)
+            card1_ability = random.choice(available_abilities)
 
-    window.blit(levelUpCard, (card1Pos, HEIGHT // 2 - 320))
-    if card1Ability:
-        checkAbility(card1Pos, card1Ability)
+    window.blit(levelUpCard, (card1_pos, HEIGHT // 2 - 320))
+    if card1_ability:
+        check_ability(card1_pos, card1_ability)
 
 
 def card2():
-    global card2Ability
-    if card2Ability is None:
-        available_abilities = [a for a in abilities if a not in [card1Ability, card3Ability]]
+    global card2_ability
+    if card2_ability is None:
+        available_abilities = [a for a in abilities if a not in [card1_ability, card3_ability]]
         if available_abilities:
-            card2Ability = random.choice(available_abilities)
+            card2_ability = random.choice(available_abilities)
 
-    window.blit(levelUpCard, (card2Pos, HEIGHT // 2 - 320))
-    if card2Ability:
-        checkAbility(card2Pos, card2Ability)
+    window.blit(levelUpCard, (card2_pos, HEIGHT // 2 - 320))
+    if card2_ability:
+        check_ability(card2_pos, card2_ability)
 
 
 def card3():
-    global card3Ability
-    if card3Ability is None:
-        available_abilities = [a for a in abilities if a not in [card1Ability, card2Ability]]
+    global card3_ability
+    if card3_ability is None:
+        available_abilities = [a for a in abilities if a not in [card1_ability, card2_ability]]
         if available_abilities:
-            card3Ability = random.choice(available_abilities)
+            card3_ability = random.choice(available_abilities)
 
-    window.blit(levelUpCard, (card3Pos, HEIGHT // 2 - 320))
-    if card3Ability:
-        checkAbility(card3Pos, card3Ability)
+    window.blit(levelUpCard, (card3_pos, HEIGHT // 2 - 320))
+    if card3_ability:
+        check_ability(card3_pos, card3_ability)
 
 
 def reset_level_up_abilities():
-    global card1Ability, card2Ability, card3Ability
-    card1Ability = None
-    card2Ability = None
-    card3Ability = None
+    global card1_ability, card2_ability, card3_ability
+    card1_ability = None
+    card2_ability = None
+    card3_ability = None
 
 
-def levelUpAbilityCheck(selected_card):
+def level_up_ability_check(selected_card):
     global fireballLevel, fireballRegenTime, fireballSize, xp
-    if selected_card == card1Pos and card1Ability == "fireball" or selected_card == card2Pos and card2Ability == "fireball" or selected_card == card3Pos and card3Ability == "fireball":
+    if selected_card == card1_pos and card1_ability == "fireball" or selected_card == card2_pos and card2_ability == "fireball" or selected_card == card3_pos and card3_ability == "fireball":
         fireballLevel += 1
         fireballRegenTime -= 1
         fireballSize = (fireballSize[0] + 8, fireballSize[1] + 10)
+
+
 attacking = False
-def attack():
+
+
+def attack() -> None:
     global attacking, swinging, fireballAmount, currentWeapon, canSwing
     if fireballAmount > 0 and currentWeapon == "fireball":
-        spawnFireball(plrX, plrY, *pygame.mouse.get_pos())
+        spawn_fireball(plrX, plrY, *pygame.mouse.get_pos())
     if currentWeapon == "sword" and not swinging and canSwing:
         swinging = True
         canSwing = False
     attacking = False
 
 
-onLevelUpScreen: bool = False
-
+on_level_up_screen: bool = False
 
 while running:
     fireball = pygame.transform.scale(fireballImage, fireballSize)
@@ -349,15 +358,15 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.MOUSEBUTTONDOWN and onLevelUpScreen == False:
+        if event.type == pygame.MOUSEBUTTONDOWN and not on_level_up_screen:
             if event.button == 1:
                 attacking = True
 
     if xp >= 100:
         randomAbility = random.sample(abilities, 1)
-        onLevelUpScreen = True
+        on_level_up_screen = True
 
-    if onLevelUpScreen:
+    if on_level_up_screen:
         card1()
         card2()
         card3()
@@ -365,29 +374,28 @@ while running:
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-
-                    if mouseX >= card1Pos and mouseX <= card1Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                    if mouseX >= card1_pos and mouseX <= card1_pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
                         xp = 0
-                        levelUpAbilityCheck(card1Pos)
+                        level_up_ability_check(card1_pos)
                         time.sleep(0.5)
-                        onLevelUpScreen = False
+                        on_level_up_screen = False
                         plrHealth += 10
 
-                    if mouseX >= card2Pos and mouseX <= card2Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                    if mouseX >= card2_pos and mouseX <= card2_pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
                         xp = 0
-                        levelUpAbilityCheck(card2Pos)
+                        level_up_ability_check(card2_pos)
                         time.sleep(0.5)
-                        onLevelUpScreen = False
+                        on_level_up_screen = False
                         plrHealth += 10
 
-                    if mouseX >= card3Pos and mouseX <= card3Pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
+                    if mouseX >= card3_pos and mouseX <= card3_pos + 320 and mouseY >= HEIGHT // 2 - 320 and mouseY <= HEIGHT // 2 + 320:
                         xp = 0
-                        levelUpAbilityCheck(card3Pos)
+                        level_up_ability_check(card3_pos)
                         time.sleep(0.5)
-                        onLevelUpScreen = False
+                        on_level_up_screen = False
                         plrHealth += 10
 
-    elif onLevelUpScreen == False:
+    elif on_level_up_screen == False:
         if plrHealth >= 100:
             plrHealth = 100
         minutes = second // 60
@@ -422,7 +430,6 @@ while running:
         if keys[pygame.K_2] and len(inventory) >= 2:
             currentWeapon = inventory[1]
 
-
         if moveX != 0 and moveY != 0:
             moveX *= math.sqrt(0.5)
             moveY *= math.sqrt(0.5)
@@ -448,7 +455,7 @@ while running:
             enemySpawnSpeed = 0.05
 
         if time.time() - lastEnemySpawn > enemySpawnSpeed:
-            spawnEnemy()
+            spawn_enemy()
             lastEnemySpawn = time.time()
 
         if time.time() - timePassed >= 1:
@@ -474,12 +481,15 @@ while running:
             enemies[i] = [enemyX, enemyY, enemyIsFacingRight, enemyHealth]
             window.blit(pygame.transform.flip(enemy, True, False) if not enemyIsFacingRight else enemy,
                         (enemyX, enemyY))
-            if fireballX + fireballSize[0] >= enemyX and fireballX <= enemyX + 30 and fireballY + fireballSize[1] >= enemyY and fireballY <= enemyY + 32:
+            if fireballX + fireballSize[0] >= enemyX and fireballX <= enemyX + 30 and fireballY + fireballSize[
+                1] >= enemyY and fireballY <= enemyY + 32:
                 enemies.pop(i)
-                spawnXP(enemyX, enemyY)
-            if swinging and ((plrIsFacingRight and plrX + 90 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32) or (plrX >= enemyX and plrX -52 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32)):
+                spawn_xp(enemyX, enemyY)
+            if swinging and ((
+                                     plrIsFacingRight and plrX + 90 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32) or (
+                                     plrX >= enemyX and plrX - 52 <= enemyX + 30 and plrY + 48 >= enemyY and plrY - 48 <= enemyY + 32)):
                 enemies.pop(i)
-                spawnXP(enemyX, enemyY)
+                spawn_xp(enemyX, enemyY)
             if plrX + 30 >= enemyX and plrX + 2 <= enemyX + 30 and plrY + 32 >= enemyY and plrY <= enemyY + 32:
                 if time.time() - lastHitTime > 1:
                     plrHealth -= 10
@@ -500,7 +510,7 @@ while running:
             window.blit(xpOrb, (xpX, xpY))
 
             if plrX + 30 >= xpX and plrX + 2 <= xpX + 16 and plrY + 32 >= xpY and plrY <= xpY + 16:
-                xp += 2.5
+                xp += 3
                 xpOrbs.pop(i)
             else:
                 xpOrbs[i] = [xpX, xpY]
