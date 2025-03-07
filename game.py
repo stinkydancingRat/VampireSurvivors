@@ -14,7 +14,7 @@ class Game:
         self.clock = pygame.time.Clock()
 
         self.running = True
-        self.on_level_up_screen = True
+        self.on_level_up_screen = False
         self.second = 0
         self.time_passed = time.time()
         self.difficulty_start_time = time.time()
@@ -126,8 +126,6 @@ class Game:
         pygame.draw.rect(self.window, (0, 0, 0), outline_rect, 5)
 
     def fireball_level_up(self, card_pos):
-        if "fireball" not in self.inventory:
-            self.inventory.append("fireball")
 
         level_text = self.font.render(f"LVL:{self.fireball_system.level}→{self.fireball_system.level + 1}", True,
                                       (255, 255, 255))
@@ -183,7 +181,7 @@ class Game:
         if selected_card == self.card1_pos and self.card1_ability == "fireball" or \
                 selected_card == self.card2_pos and self.card2_ability == "fireball" or \
                 selected_card == self.card3_pos and self.card3_ability == "fireball":
-            self.fireball_system.level_up()
+            self.fireball_system.level_up(self.inventory)
 
     def attack(self):
         if self.current_weapon == "fireball" and self.fireball_system.amount > 0:
@@ -255,29 +253,6 @@ class Game:
             self.current_weapon = "fireball"
             self.last_weapon_switch = current_time
 
-    def update_game_state(self):
-        if self.player.health >= 100:
-            self.player.health = 100
-
-        if time.time() - self.time_passed >= 1:
-            self.second += 1
-            self.time_passed = time.time()
-
-        self.update_difficulty()
-
-        if time.time() - self.last_enemy_spawn > self.enemy_spawn_speed:
-            self.spawn_enemy()
-            self.last_enemy_spawn = time.time()
-
-        self.player.update()
-
-        self.sword.update(self.player.x, self.player.y, self.player.is_facing_right)
-
-        self.fireball_system.update()
-
-        if self.attacking:
-            self.attack()
-
     def update_difficulty(self):
         elapsed_time = time.time() - self.difficulty_start_time
 
@@ -296,45 +271,6 @@ class Game:
         elif elapsed_time > 800:
             self.enemy_spawn_speed = 0.05
 
-    def update_enemies(self):
-        for i in range(len(self.enemies) - 1, -1, -1):
-            enemy_x, enemy_y, enemy_is_facing_right, enemy_health = self.enemies[i]
-
-            dx, dy = self.normalize(enemy_x, enemy_y)
-            sep_force_x, sep_force_y = self.separation(i)
-            dx += sep_force_x
-            dy += sep_force_y
-
-            distance = math.sqrt(dx ** 2 + dy ** 2)
-            if distance != 0:
-                dx /= distance
-                dy /= distance
-
-            enemy_x += dx * 1
-            enemy_y += dy * 1
-
-            self.enemies[i] = [enemy_x, enemy_y, enemy_is_facing_right, enemy_health]
-
-            self.window.blit(pygame.transform.flip(self.enemy_sprite, True, False)
-                             if not enemy_is_facing_right else self.enemy_sprite, (enemy_x, enemy_y))
-
-            fireball = self.fireball_system.active_fireball
-            if fireball and fireball.check_collision(enemy_x, enemy_y, 30, 32):
-                self.enemies.pop(i)
-                self.spawn_xp(enemy_x, enemy_y)
-                continue
-
-            if self.sword.swinging and self.sword.check_collision(enemy_x, enemy_y, 30, 32):
-                self.enemies.pop(i)
-                self.spawn_xp(enemy_x, enemy_y)
-                continue
-
-            if self.player.check_collision(enemy_x, enemy_y, 30, 32):
-                if time.time() - self.player.last_hit_time > 1:
-                    self.player.health -= 10
-                    self.player.apply_knockback(enemy_x, enemy_y)
-                    self.player.last_hit_time = time.time()
-
     def update_xp_orbs(self):
         for i in range(len(self.xp_orbs) - 1, -1, -1):
             xp_x, xp_y = self.xp_orbs[i]
@@ -351,7 +287,7 @@ class Game:
             self.window.blit(self.xp_orb_sprite, (xp_x, xp_y))
 
             if self.player.check_collision(xp_x, xp_y, 16, 16):
-                self.xp += 100
+                self.xp += 20
                 self.xp_orbs.pop(i)
             else:
                 self.xp_orbs[i] = [xp_x, xp_y]
@@ -420,6 +356,86 @@ class Game:
                     f"Ammo: {self.fireball_system.amount}/{self.fireball_system.max_amount}", True, color)
                 self.window.blit(ammo_text, (200, 90 + i * 30))
 
+    def update_game_state(self):
+        if self.player.health >= 100:
+            self.player.health = 100
+
+        if time.time() - self.time_passed >= 1:
+            self.second += 1
+            self.time_passed = time.time()
+
+        self.update_difficulty()
+
+        if time.time() - self.last_enemy_spawn > self.enemy_spawn_speed:
+            self.spawn_enemy()
+            self.last_enemy_spawn = time.time()
+
+        self.player.update()
+
+        self.sword.update(self.player.x, self.player.y, self.player.is_facing_right)
+
+        self.fireball_system.update()
+
+        if self.attacking:
+            self.attack()
+
+    def attack(self):
+        if self.current_weapon == "fireball" and self.fireball_system.amount > 0:
+            mouse_pos = pygame.mouse.get_pos()
+            self.fireball_system.spawn_fireball(self.player.x, self.player.y, mouse_pos[0], mouse_pos[1])
+        elif self.current_weapon == "sword" and not self.sword.swinging and self.sword.can_swing:
+            self.sword.start_swing()
+        self.attacking = False
+
+    def update_enemies(self):
+        for i in range(len(self.enemies) - 1, -1, -1):
+            enemy_x, enemy_y, enemy_is_facing_right, enemy_health = self.enemies[i]
+
+            dx, dy = self.normalize(enemy_x, enemy_y)
+            sep_force_x, sep_force_y = self.separation(i)
+            dx += sep_force_x
+            dy += sep_force_y
+
+            distance = math.sqrt(dx ** 2 + dy ** 2)
+            if distance != 0:
+                dx /= distance
+                dy /= distance
+
+            enemy_x += dx * 1
+            enemy_y += dy * 1
+
+            self.enemies[i] = [enemy_x, enemy_y, enemy_is_facing_right, enemy_health]
+
+            self.window.blit(pygame.transform.flip(self.enemy_sprite, True, False)
+                             if not enemy_is_facing_right else self.enemy_sprite, (enemy_x, enemy_y))
+
+            enemy_hit = False
+            for j in range(len(self.fireball_system.active_fireballs) - 1, -1, -1):
+                fireball = self.fireball_system.active_fireballs[j]
+                if fireball.check_collision(enemy_x, enemy_y, 30, 32):
+                    enemy_hit = True
+
+                    should_destroy = fireball.hit_enemy()
+                    if should_destroy:
+                        self.fireball_system.active_fireballs.pop(j)
+                    break
+
+            if enemy_hit:
+                self.enemies.pop(i)
+                self.spawn_xp(enemy_x, enemy_y)
+                continue
+
+            if self.sword.swinging and self.sword.check_collision(enemy_x, enemy_y, 30, 32):
+                self.enemies.pop(i)
+                self.spawn_xp(enemy_x, enemy_y)
+                continue
+
+            if self.player.check_collision(enemy_x, enemy_y, 30, 32):
+                if time.time() - self.player.last_hit_time > 1:
+                    self.player.health -= 10
+                    self.player.apply_knockback(enemy_x, enemy_y)
+                    self.player.last_hit_time = time.time()
+
     def run(self):
         while self.running:
             self.fireball = pygame.transform.scale(self.fireball_image, self.fireball_system.size)
@@ -433,8 +449,8 @@ class Game:
                 self.update_enemies()
                 self.update_xp_orbs()
 
-                if self.fireball_system.active_fireball:
-                    self.fireball_system.active_fireball.draw(self.window, self.fireball)
+                for fireball in self.fireball_system.active_fireballs:
+                    fireball.draw(self.window, self.fireball)
 
             pygame.display.update()
             self.clock.tick(60)
@@ -588,6 +604,8 @@ class Fireball:
         self.dy = dy
         self.angle = angle
         self.size = size
+        self.enemies_hit = 0
+        self.max_enemies = 10
 
     def update(self):
         self.x += self.dx
@@ -607,11 +625,15 @@ class Fireball:
 
     def is_out_of_bounds(self, width, height):
         return (
-                self.x < -80 or
-                self.x > width + 80 or
-                self.y < -80 or
-                self.y > height + 80
+                self.x < -200 or
+                self.x > width + 200 or
+                self.y < -200 or
+                self.y > height + 200
         )
+
+    def hit_enemy(self):
+        self.enemies_hit += 1
+        return self.enemies_hit >= self.max_enemies
 
 
 class FireballSystem:
@@ -622,29 +644,39 @@ class FireballSystem:
         self.amount = 3
         self.max_amount = 3
         self.regen_time = 12
-        self.active_fireball = None
-        self.last_regen = time.time()
-        self.first_fireball_spawned = False
+        self.active_fireballs = []
+        self.last_regen = None  # Initialize to None to indicate no regeneration in progress
+        self.cooldown = 0.5
+        self.last_fireball_time = 0
 
     def update(self):
-        if self.amount < self.max_amount and time.time() - self.last_regen > self.regen_time and self.first_fireball_spawned:
-            self.amount += 1
-            self.last_regen = time.time()
+        if self.amount < self.max_amount:
+            if self.last_regen is None:
+                self.last_regen = time.time()
 
-        if self.active_fireball:
-            self.active_fireball.update()
-            if self.active_fireball.is_out_of_bounds(self.game.width, self.game.height):
-                self.active_fireball = None
+            elif time.time() - self.last_regen > self.regen_time:
+                self.amount += 1
+                self.last_regen = time.time()
+                if self.amount >= self.max_amount:
+                    self.last_regen = None
+
+        for i in range(len(self.active_fireballs) - 1, -1, -1):
+            fireball = self.active_fireballs[i]
+            fireball.update()
+            if fireball.is_out_of_bounds(self.game.width, self.game.height):
+                self.active_fireballs.pop(i)
 
     def spawn_fireball(self, player_x, player_y, mouse_x, mouse_y):
-        self.first_fireball_spawned = True
-        if self.amount <= 0:
+        current_time = time.time()
+        if self.amount <= 0 or current_time - self.last_fireball_time < self.cooldown:
             return
 
-        if self.amount < self.max_amount:
-            self.last_regen = time.time()
-
         self.amount -= 1
+
+        if self.last_regen is None and self.amount < self.max_amount:
+            self.last_regen = current_time
+
+        self.last_fireball_time = current_time
 
         angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
         angle_degrees = math.degrees(angle)
@@ -655,13 +687,18 @@ class FireballSystem:
         fireball_dx = math.cos(angle) * 15
         fireball_dy = math.sin(angle) * 15
 
-        self.active_fireball = Fireball(fireball_x, fireball_y, angle_degrees, fireball_dx, fireball_dy, self.size)
+        new_fireball = Fireball(fireball_x, fireball_y, angle_degrees, fireball_dx, fireball_dy, self.size)
+        self.active_fireballs.append(new_fireball)
 
-    def level_up(self):
+    def level_up(self, inventory):
+        self.inventory = inventory
+        if "fireball" not in self.inventory:
+            self.inventory.append("fireball")
         self.level += 1
-        if self.regen_time < 9:
+        if self.regen_time > 3:
             self.regen_time -= 0.5
         self.size = (self.size[0] + 8, self.size[1] + 10)
+        self.cooldown = max(0.1, self.cooldown - 0.05)
 
 
 if __name__ == "__main__":
