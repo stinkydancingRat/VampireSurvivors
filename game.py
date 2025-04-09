@@ -287,7 +287,7 @@ class Game:
             self.window.blit(self.xp_orb_sprite, (xp_x, xp_y))
 
             if self.player.check_collision(xp_x, xp_y, 16, 16):
-                self.xp += 20
+                self.xp += 2.5
                 self.xp_orbs.pop(i)
             else:
                 self.xp_orbs[i] = [xp_x, xp_y]
@@ -699,7 +699,6 @@ class FireballSystem:
             self.regen_time -= 0.5
         self.size = (self.size[0] + 8, self.size[1] + 10)
         self.cooldown = max(0.1, self.cooldown - 0.05)
-
 
 if __name__ == "__main__":
     game = Game()
